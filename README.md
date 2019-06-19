@@ -10,12 +10,6 @@ After build:
 * The contracts are built into a _bin/\<contract name\>_ folder in their respective directories.
 * Finally, simply use __closb__ to _set contract_ by pointing to the previously mentioned directory.
 
-## Contributing
-
-[Contributing Guide](./CONTRIBUTING.md)
-
-[Code of Conduct](./CONTRIBUTING.md#conduct)
-
 ## License
 
 [MIT](./LICENSE)
