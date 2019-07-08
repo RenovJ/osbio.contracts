@@ -7,18 +7,31 @@ void datatrader::hi( name user ) {
     print("Hello, ", user);
 }
 
-void datatrader::adddata( name provider,
-  std::string datatypename,
-  uint64_t price,
-  std::string field1,
-  std::string field2,
-  std::string field3,
-  std::string field4,
-  std::string field5,
-  std::string idfshash
-  ) {
+void datatrader::adddatabegin(
+    name provider,
+    std::string datatype_name,
+    uint64_t price,
+    vector<std::string> detail_fields,
+    uint64_t data_available_period,
+    std::string data_hash_original,
+    vector<segment> segments
+) {
+    // check provider
     require_auth(provider);
-    // check datatypename
+    
+    // check datatype_name
+    datatype_index types(_code, _code.value);
+    auto iterator = types.begin();
+    do {
+      if ( (*iterator).datatype_name == datatype_name )
+        break;
+    } while (++iterator != types.end());
+    eosio_assert(iterator != types.end(), "The datatype is invalid");
+    
+    // Matching idfs cluster for each data segment
+    match_idfs_cluster(segments);
+    
+    // emplace data
     data_index dataset(_code, _code.value);
     auto it = dataset.begin();
     uint64_t size=0;
@@ -26,31 +39,32 @@ void datatrader::adddata( name provider,
       size++;
     }
     dataset.emplace(_self, [&](auto& row) {
-        row.dataid = size;
-        row.datatypename = datatypename;
+        row.data_id = size;
+        row.datatype_name = datatype_name;
         row.provider = provider;
         row.datetime = now();
         row.price = price;
-        row.status = DATA_STATUS_ON_SALE;
-        row.field1value = field1;
-        row.field2value = field2;
-        row.field3value = field3;
-        row.field4value = field4;
-        row.field5value = field5;
-        row.idfshash = idfshash;
+        row.status = DATA_STATUS_ADDING;
+        row.detail_fields = detail_fields;
+        row.available_period = data_available_period;
+        row.data_hash_original = data_hash_original;
+        row.segments = segments; 
         });
-    print( "A new data is added by ", provider );
 }
 
-[[eosio::action]]
-void datatrader::adddatatype( name user,
-  std::string datatypename,
-  uint64_t fieldnum,
-  std::string field1,
-  std::string field2,
-  std::string field3,
-  std::string field4,
-  std::string field5
+void datatrader::adddataend(
+    name provider,
+    uint64_t data_id
+    std::vector<std::string>
+) {
+
+}
+
+void datatrader::adddatatype(
+    name user,
+    std::string datatypename,
+    uint64_t detail_fields_num,
+    std::vector<std::string> detail_fields
   ) {
     require_auth(user);
     datatype_index types(_code, _code.value);
@@ -82,8 +96,10 @@ void datatrader::adddatatype( name user,
     }
 }
 
-[[eosio::action]]
-void datatrader::buydata( name user, uint64_t dataid ) {
+void datatrader::buydata(
+    name user,
+    uint64_t data_id
+) {
    require_auth(user);
    auto iterator = get_data_by_id(dataid);
    data d = *iterator;
@@ -118,14 +134,10 @@ void datatrader::buydata( name user, uint64_t dataid ) {
    ).send();
 }
 
-datatrader::data_index::const_iterator datatrader::get_data_by_id(uint64_t dataid) {
-    data_index dataset(_code, _code.value);
-    auto iterator = dataset.find(dataid);
-    eosio_assert(iterator != dataset.end(), "Dataid is invalid");
-    return iterator;
-}
-
-void datatrader::removedata(name user, uint64_t dataid) {
+void datatrader::removedata(
+    name user,
+    uint64_t data_id
+) {
     require_auth(user);
     auto iterator = get_data_by_id(dataid);
     data d = *iterator;
@@ -144,207 +156,29 @@ void datatrader::removedata(name user, uint64_t dataid) {
     });
 }
 
-void datatrader::datalist(std::string datatypename, name user) {
+void datatrader::addidfs(
+    name idfs_account,
+    uint64_t capacity,
+    uint64_t cluster_id,
+    string idfs_public_key,
+    string ipaddr,
+    uint64_t port
+) {
+
+}
+
+void datatrader::addcluster(
+    name idfs_account,
+    string cluster_key
+) {
+
+}
+
+datatrader::data_index::const_iterator datatrader::get_data_by_id(uint64_t dataid) {
     data_index dataset(_code, _code.value);
-    auto it = dataset.find(0);
-    if (it == dataset.end()) {
-        print("No data added");
-        return;
-    }
-
-    int count = 0;
-    std::string result;
-    print("{ ");
-    print('"');
-    print("data");
-    print('"');
-    print(": [");
-//    print("{\n  \"data\": [");
-    for(auto& item : dataset) {
-        if (datatypename == "" || datatypename == item.datatypename) {
-            if (count != 0)
-                //print(",\n  ");
-                print(", ");
-            //print("{");
-            print("{");
-            print_data_info(item);
-            if (check_if_buy(user, item.dataid) == true) {
-                print(", ");
-                print('"');
-                print("purchased");
-                print('"');
-                print(": ");
-                print('"');
-                print("true");
-                print('"');
-            }
-            else {
-                print(", ");
-                print('"');
-                print("purchased");
-                print('"');
-                print(": ");
-                print('"');
-                print("false");
-                print('"');
-
-            }
-            print("  }");
-            count++;
-        }
-    }
-    print("]}");
-}
-
-void datatrader::print_data_info(const data it) {
-    std::string status;
-    if (it.status == DATA_STATUS_ON_SALE) {
-        status = "on_sale";
-    } else if (it.status == DATA_STATUS_REMOVED) {
-        status = "removed";
-    }
-
-    print('"');
-    print("dataid");
-    print('"');
-    print(": ", it.dataid);
-    print(", ");
-    print('"');
-    print("provider");
-    print('"');
-    print(": ");
-    print('"');
-    print(it.provider);
-    print('"');
-    print(", ");
-    print('"');
-    print("datatypename");
-    print('"');
-    print(": ");
-    print('"');
-    print(it.datatypename);
-    print('"');
-    print(", ");
-    print('"');
-    print("datetime");
-    print('"');
-    print(": ");
-    print('"');
-    print((uint32_t)it.datetime);
-    print('"');
-    print(", ");
-    print('"');
-    print("price");
-    print('"');
-    print(": ", it.price);
-    print(", ");
-    print('"');
-    print("status");
-    print('"');
-    print(": ");
-    print('"');
-    print(status.c_str());
-    print('"');
-    print(",");
-    print('"');
-    print("field1");
-    print('"');
-    print(": ");
-    print('"');
-    print(it.field1value);
-    print('"');
-    print(", ");
-    print('"');
-    print("field2");
-    print('"');
-    print(": ");
-    print('"');
-    print(it.field2value);
-    print('"');
-    print(", ");
-    print('"');
-    print("field3");
-    print('"');
-    print(": ");
-    print('"');
-    print(it.field3value);
-    print('"');
-    print(", ");
-    print('"');
-    print("field4");
-    print('"');
-    print(": ");
-    print('"');
-    print(it.field4value);
-    print('"');
-    print(", ");
-    print('"');
-    print("field5");
-    print('"');
-    print(": ");
-    print('"');
-    print(it.field5value);
-    print('"');
-    print(", ");
-    print('"');
-    print("idfshash");
-    print('"');
-    print(": ");
-    print('"');
-    print(it.idfshash);
-    print('"');
-}
-
-void datatrader::datatypelist() {
-    datatype_index types(_code, _code.value);
-    auto iterator = types.begin();
-    if (iterator == types.end()) {
-        print("No datatype added");
-        return;
-    }
-
-    print("{\n  \"datatypename\": [");
-    do {
-        if (iterator != types.begin())
-            print(",\n");
-        print_datatype_info( *iterator );
-    } while (++iterator != types.end());
-    print("]\n}");
-}
-
-[[eosio::action]]
-void datatrader::getdatatype(std::string datatypename) {
-    datatype_index types(_code, _code.value);
-    auto iterator = types.begin();
-    if (iterator == types.end()) {
-        print("The datatype is not found - ", datatypename.c_str());
-        return;
-    }
-
-    do {
-        if ((*iterator).datatypename == datatypename)
-            print_datatype_info( *iterator );
-    } while (++iterator != types.end());
-}
-
-void datatrader::print_datatype_info(const datatype it) {
-    print("{\n    \"datatypeid\": ");
-    print(it.datatypeid);
-    print(",\n    \"datatypename\": \"", it.datatypename);
-    print("\",\n    \"definer\": \"", it.definer);
-    print("\",\n    \"fieldnum\": ", it.fieldnum);
-    print(",\n    \"field1\": \"", it.field1name+"\",");
-    print("\n    \"field2\": \"", it.field2name+"\",");
-    print("\n    \"field3\": \"", it.field3name+"\",");
-    print("\n    \"field4\": \"", it.field4name+"\",");
-    print("\n    \"field5\": \"", it.field5name+"\"\n  }");
-}
-
-void datatrader::checkifbuy(name user, uint64_t dataid) {
-    if (check_if_buy(user, dataid) == true)
-        print("purchased");
-    else
-        print("not_purchased");
+    auto iterator = dataset.find(dataid);
+    eosio_assert(iterator != dataset.end(), "Dataid is invalid");
+    return iterator;
 }
 
 bool datatrader::check_if_buy(name user, uint64_t dataid) {
@@ -361,4 +195,39 @@ bool datatrader::check_if_buy(name user, uint64_t dataid) {
   } while (++iterator != history.end());
   return false;
 }
-EOSIO_DISPATCH( datatrader, (hi)(adddata)(adddatatype)(buydata)(removedata)(datalist)(datatypelist)(getdatatype)(checkifbuy) )
+
+/**
+ * Matching idfs clusters first whose usage is the lowest.
+ * @TODO: Exception for a case of smaller number of clusters than the number of segments.
+**/
+void datatrader::match_idfs_cluster(vector<segment> segments) {
+  auto it_cluster = _clusters.begin()
+  auto min_usage_cluster = _clusters.end();
+  for (uint64_t i = 0; i < segments.size(); i++) {
+    min_usage_cluster = _clusters.end();
+    do {
+      if (min_usage_cluster == _clusters.end()) {
+        if ((*it_cluster).capacity - (*it_cluster).usage < segments.at(i).size) {
+          min_usage_cluster = it_cluster;
+        } else {
+          continue;
+        }
+      }
+      
+      if (min_usage_cluster.usage > (*it_cluster).usage && ) {
+        // check matched already for previous segment
+        for (uint64_t j = 0; j < i; j++) {
+          if (segments.at(j).idfs_cluster_id == (*it_cluster).cluster_id)
+            break;
+        }
+        if (j == i) {
+          min_usage_cluster = *it_cluster
+        }
+      }
+    } while (++it_cluster != _clusters.end());
+  
+    segments.at(i).idfs_cluster_id = (*it_cluster).cluster_id;
+  }
+}
+
+EOSIO_DISPATCH( datatrader, (hi)(adddatabegin)(adddataend)(adddatatype)(buydata)(removedata)(addidfs)(addcluster) )
