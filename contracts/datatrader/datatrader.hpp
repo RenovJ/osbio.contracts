@@ -1,4 +1,6 @@
-#include <eosiolib/eosio.hpp>
+#include <eosio/eosio.hpp>
+#include <eosio/system.hpp>
+#include <eosio/asset.hpp>
 using namespace eosio;
 
 class [[eosio::contract]] datatrader : public contract {
@@ -8,12 +10,23 @@ class [[eosio::contract]] datatrader : public contract {
       const uint64_t DATA_STATUS_ON_SALE = 0x00;
       const uint64_t DATA_STATUS_ADDING = 0x01;
       const uint64_t DATA_STATUS_REMOVED = 0x02;
-
+      const std::string TOKEN_SYMBOL = "OSB";
+      const uint64_t TOKEN_DECIMAL = 4;
+      const std::string DATA_REWARD_MEMO = "Data reward";
+      
+      struct segment {
+        uint64_t seg_no;
+        uint64_t size;
+        std::string hash;
+        std::string hash_idfs;
+        uint64_t idfs_cluster_id;
+      };
+      
       datatrader(name receiver, name code, datastream<const char*> ds )
         : contract(receiver, code, ds),
         _data(receiver, code.value),
         _datatype(receiver, code.value),
-        _buydata(receiver, code.value),
+        _buyhistory(receiver, code.value),
         _idfs(receiver, code.value),
         _idfscluster(receiver, code.value) {}
 
@@ -22,17 +35,15 @@ class [[eosio::contract]] datatrader : public contract {
         name provider,
         std::string datatype_name,
         uint64_t price,
-        vector<std::string> detail_fields,
-        uint64_t data_size,
+        std::vector<std::string> detail_fields,
         uint64_t data_available_period,
-        uint64_t data_segment_quantity,
         std::string data_hash_original,
-        vector<segment> segments
+        std::vector<segment> segments
       );
       [[eosio::action]] void adddataend(
         name provider,
-        uint64_t data_id
-        std::vector<std::string>
+        uint64_t data_id,
+        std::vector<segment> segments
       );
       [[eosio::action]] void adddatatype(
         name user,
@@ -52,24 +63,16 @@ class [[eosio::contract]] datatrader : public contract {
         name idfs_account,
         uint64_t capacity,
         uint64_t cluster_id,
-        string idfs_public_key,
-        string ipaddr,
+        std::string idfs_public_key,
+        std::string ipaddr,
         uint64_t port
       );
       [[eosio::action]] void addcluster(
         name idfs_account,
-        string cluster_key
+        std::string cluster_key
       );
       
   private:
-      struct segment {
-        uint64_t no;
-        uint64_t size;
-        std::string hash;
-        std::string hash_ipfs;
-        name idfs_cluster_id;
-      };
-      
       struct [[eosio::table]] data {
         uint64_t data_id;
         std::string datatype_name;
@@ -77,10 +80,10 @@ class [[eosio::contract]] datatrader : public contract {
         time_t datetime;
         uint64_t price;
         uint64_t status;
-        vector<std::string> detail_fields;
+        std::vector<std::string> detail_fields;
         uint64_t available_period;
         std::string data_hash_original;
-        vector<segment> segments;
+        std::vector<segment> segments;
         
         uint64_t primary_key() const { return data_id; } 
       };
@@ -90,12 +93,12 @@ class [[eosio::contract]] datatrader : public contract {
         std::string datatype_name;
         name definer;
         uint64_t detail_fields_num;
-        vector<std::string> detail_fields;
+        std::vector<std::string> detail_fields;
 
         uint64_t primary_key() const { return datatype_id; }
       };
 
-      struct [[eosio::table]] buydata {
+      struct [[eosio::table]] buyhistory {
         uint64_t buy_id;
         name buyer;
         uint64_t data_id;
@@ -107,34 +110,40 @@ class [[eosio::contract]] datatrader : public contract {
       struct [[eosio::table]] idfs {
         uint64_t idfs_id;
         name account;
-        std::string idfs_public_key
+        std::string idfs_public_key;
         uint64_t capacity;
         time_t since;
         uint64_t cluster_id;
         std::string ipaddr;
-        uint64_t post;
+        uint64_t port;
+        
+        uint64_t primary_key() const { return idfs_id; }
       };
       
       struct [[eosio::table]] idfscluster {
         uint64_t cluster_id;
+        std::string cluster_key;
         uint64_t usage;
         uint64_t capacity;
+        
+        uint64_t primary_key() const { return cluster_id; }
       };
 
       typedef eosio::multi_index<"data"_n, data> data_index;
       typedef eosio::multi_index<"datatype"_n, datatype> datatype_index;
-      typedef eosio::multi_index<"buydata"_n, buydata> buydata_index;
+      typedef eosio::multi_index<"buyhistory"_n, buyhistory> buyhistory_index;
       typedef eosio::multi_index<"idfs"_n, idfs> idfs_index;
       typedef eosio::multi_index<"idfscluster"_n, idfscluster> idfscluster_index;
 
       datatype_index    _datatype;
       data_index        _data;
-      buydata_index     _buydata;
+      buyhistory_index  _buyhistory;
       idfs_index        _idfs;
       idfscluster_index _idfscluster;
 
       data_index::const_iterator get_data_by_id(uint64_t data_id);
+      idfscluster_index::const_iterator get_idfs_cluster_by_id(uint64_t cluster_id);
       bool check_if_buy(name user, uint64_t data_id);
-      void match_idfs_cluster(vector<segment> segments);
+      void match_idfs_cluster(std::vector<segment> segments);
 };
 
