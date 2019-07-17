@@ -21,6 +21,7 @@ void datatrader::adddatabegin(
     
     // check datatype_name
     auto iterator = _datatype.begin();
+    eosio_assert(_datatype.begin() != _datatype.end(), "There is no data type");
     do {
       if ((*iterator).datatype_name == datatype_name)
         break;
@@ -84,9 +85,11 @@ void datatrader::adddatatype(
     require_auth(user);
     uint64_t size = std::distance(_datatype.cbegin(), _datatype.cend());
     auto iterator = _datatype.begin();
-    do {
-        eosio_assert((*iterator).datatype_name != datatype_name, "The datatype is already exist");
-    } while(++iterator != _datatype.end());
+    if (iterator != _datatype.end()) {
+      do {
+          eosio_assert((*iterator).datatype_name != datatype_name, "The datatype is already exist");
+      } while(++iterator != _datatype.end());
+    }
     
     _datatype.emplace(_self, [&](auto& row) {
         row.datatype_id = size;
@@ -109,12 +112,14 @@ void datatrader::buydata(
 
    uint64_t size = std::distance(_buyhistory.cbegin(), _buyhistory.cend());
    auto it = _buyhistory.begin();
-   do {
-     eosio_assert(
-       (*it).buyer != user || (*it).data_id != data_id,
-       "The user has already purchased the data"
-     );
-   } while(++it != _buyhistory.end());
+   if (_buyhistory.begin() != _buyhistory.end()) {
+     do {
+       eosio_assert(
+         (*it).buyer != user || (*it).data_id != data_id,
+         "The user has already purchased the data"
+       );
+     } while(++it != _buyhistory.end());
+   }
 
    _buyhistory.emplace(_self, [&](auto& row) {
       row.buy_id = size;
@@ -156,8 +161,12 @@ void datatrader::addidfs(
 ) {
     require_auth(idfs_account);
     
-    // TODO: setting cluster capacity
-    // auto itCluster = get_idfs_cluster_by_id(cluster_id);
+    auto itCluster = get_idfs_cluster_by_id(cluster_id);
+    if ((*itCluster).capacity == 0 || capacity < (*itCluster).capacity) {
+      _idfscluster.modify(itCluster, _self, [&](auto& row) {
+        row.capacity = capacity;
+      });
+    }
     
     uint64_t size = std::distance(_idfs.cbegin(), _idfs.cend());
     _idfs.emplace(_self, [&](auto& row) {
@@ -180,9 +189,11 @@ void datatrader::addcluster(
     
     // check if the cluster key is already exist
     auto iterator = _idfscluster.begin();
-    do {
-      eosio_assert((*iterator).cluster_key != cluster_key, "The cluster key is already exist");
-    } while (++iterator != _idfscluster.end());
+    if (iterator != _idfscluster.end()) {
+      do {
+        eosio_assert((*iterator).cluster_key != cluster_key, "The cluster key is already exist");
+      } while (++iterator != _idfscluster.end());
+    }
     
     uint64_t size = std::distance(_idfscluster.cbegin(), _idfscluster.cend());
     _idfscluster.emplace(_self, [&](auto& row) {
@@ -222,21 +233,21 @@ bool datatrader::check_if_buy(name user, uint64_t data_id) {
  * @TODO: Exception for a case of smaller number of clusters than the number of segments.
 **/
 void datatrader::match_idfs_cluster(std::vector<segment> segments) {
-  auto it_cluster = _idfscluster.begin();
-  auto min_usage_cluster = _idfscluster.end();
+  eosio_assert(_idfscluster.begin() != _idfscluster.end(), "No idfs cluster");
   for (uint64_t i = 0; i < segments.size(); i++) {
-    min_usage_cluster = _idfscluster.end();
+    eosio_assert(segments.at(i).size > 0, "A segment size must be bigger than 0");
+    auto min_usage_cluster = _idfscluster.end();
+    auto it_cluster = _idfscluster.begin();
     do {
       if (min_usage_cluster == _idfscluster.end()) {
         if ((*it_cluster).capacity - (*it_cluster).usage < segments.at(i).size) {
-          eosio_assert(segments.at(i).size > 0, "A segment size must be bigger than 0");
           min_usage_cluster = it_cluster;
         } else {
           continue;
         }
       }
       
-      if (min_usage_cluster->usage > (*it_cluster).usage) {
+      if (min_usage_cluster->usage >= (*it_cluster).usage) {
         // check matched already for previous segment
         uint64_t j;
         for (j = 0; j < i; j++) {
@@ -248,8 +259,9 @@ void datatrader::match_idfs_cluster(std::vector<segment> segments) {
         }
       }
     } while (++it_cluster != _idfscluster.end());
-  
-    segments.at(i).idfs_cluster_id = (*it_cluster).cluster_id;
+    
+    eosio_assert((*it_cluster).capacity - (*it_cluster).usage >= segments.at(i).size, "There is no idfs cluster to match");
+    segments.at(i).idfs_cluster_id = (*min_usage_cluster).cluster_id;
   }
 }
 
