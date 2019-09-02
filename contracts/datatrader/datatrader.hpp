@@ -17,6 +17,7 @@ class [[eosio::contract]] datatrader : public contract {
       const uint64_t TOKEN_DECIMAL = 0;
       const name TOKEN_CONTRACT = "osb.token"_n;
       const std::string DATA_REWARD_MEMO = "Data reward";
+      const uint64_t MEGA_BYTE = 1024 * 1024;
       
       struct fragment {
         uint64_t fragment_no;
@@ -34,13 +35,15 @@ class [[eosio::contract]] datatrader : public contract {
         _datatype(receiver, code.value),
         _buyhistory(receiver, code.value),
         _idfs(receiver, code.value),
-        _idfscluster(receiver, code.value) {}
+        _idfscluster(receiver, code.value),
+        _idfsreward(receiver, code.value),
+        _irewardclaim(receiver, code.value) {}
 
       [[eosio::action]] void hi( name user );
       [[eosio::action]] void adddatabegin(
         name provider,
         std::string datatype_name,
-        uint64_t price,
+        esset price,
         std::vector<std::string> detail_fields,
         uint64_t period,
         std::string data_hash_original,
@@ -79,13 +82,17 @@ class [[eosio::contract]] datatrader : public contract {
         name idfs_account,
         std::string cluster_key
       );
+      [[eosio::action]] void claimireward(
+        name idfs_account,
+        uint64_t reward_id
+      );
       
   private:
       struct [[eosio::table]] data {
         uint64_t data_id;
         std::string datatype_name;
         name provider;
-        time_t datetime;
+        uint64_t timestamp;
         uint64_t price;
         uint64_t status;
         std::vector<std::string> detail_fields;
@@ -111,7 +118,7 @@ class [[eosio::contract]] datatrader : public contract {
         uint64_t buy_id;
         name buyer;
         uint64_t data_id;
-        uint64_t datetime;
+        uint64_t timestamp;
         eosio::public_key buyer_key;
 
         uint64_t primary_key() const { return buy_id; }	
@@ -136,9 +143,32 @@ class [[eosio::contract]] datatrader : public contract {
         std::string cluster_key;
         uint64_t usage;
         uint64_t capacity;
+        uint64_t fee_ratio;
         
         uint64_t primary_key() const { return cluster_id; }
       };
+      
+      struct [[eosio::table]] idfsreward {
+        uint64_t reward_id;
+        uint64_t data_id;
+        uint64_t fragment_no;
+        uint64_t cluster_id;
+        name idfs_account;
+        asset reward_total;
+        asset reward_claimed;
+      }
+      
+      struct [[eosio::table]] irewardclaim {
+        uint64_t claim_id;
+        uint64_t reward_id;
+        asset quantity;
+        uint64 timestamp;
+      }
+
+      data_index::const_iterator get_data_by_id(uint64_t data_id);
+      idfscluster_index::const_iterator get_idfs_cluster_by_id(uint64_t cluster_id);
+      bool check_if_buy(name user, uint64_t data_id);
+      std::vector<fragment> match_idfs_cluster(std::vector<fragment> fragments);
 
       typedef eosio::multi_index<"data"_n, data> data_index;
       typedef eosio::multi_index<"datatype"_n, datatype> datatype_index;
@@ -146,16 +176,15 @@ class [[eosio::contract]] datatrader : public contract {
       typedef eosio::multi_index<"idfs"_n, idfs,
       indexed_by<"getcluster"_n, const_mem_fun<idfs, uint64_t, &idfs::secondary_key>>> idfs_index;
       typedef eosio::multi_index<"idfscluster"_n, idfscluster> idfscluster_index;
+      typedef eosio::multi_index<"idfsreward"_n, idfsreward> idfsreward_index;
+      typedef eosio::multi_index<"irewardclaim"_n, irewardclaim> irewardclaim_index;
 
-      datatype_index    _datatype;
-      data_index        _data;
-      buyhistory_index  _buyhistory;
-      idfs_index        _idfs;
-      idfscluster_index _idfscluster;
-
-      data_index::const_iterator get_data_by_id(uint64_t data_id);
-      idfscluster_index::const_iterator get_idfs_cluster_by_id(uint64_t cluster_id);
-      bool check_if_buy(name user, uint64_t data_id);
-      std::vector<fragment> match_idfs_cluster(std::vector<fragment> fragments);
+      datatype_index     _datatype;
+      data_index         _data;
+      buyhistory_index   _buyhistory;
+      idfs_index         _idfs;
+      idfscluster_index  _idfscluster;
+      idfsreward_index   _idfsreward;
+      irewardclaim_index _irewardclaim;
 };
 
