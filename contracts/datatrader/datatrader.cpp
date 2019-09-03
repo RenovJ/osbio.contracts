@@ -88,13 +88,14 @@ void datatrader::adddataend(
       row.fragments = fragments;
     });
 
-   // sending OSB to IDFSs as a reward for keeping data    
+   // sending OSB to IDFSs as a reward for keeping data
+   /*    
    action(
      permission_level{provider, "active"_n},
      TOKEN_CONTRACT, "transfer"_n,
-     std::make_tuple(user, d.provider, d.price),
-     std::string(DATA_REWARD_MEMO))
+     std::make_tuple(user, d.provider, d.price, std::string(DATA_REWARD_MEMO))
    ).send();
+   */
 }
 
 void datatrader::adddatatype(
@@ -144,7 +145,7 @@ void datatrader::buydata(
    }
 
    _buyhistory.emplace(_self, [&](auto& row) {
-      row.buy_id = size;
+      row.buy_id = size + 1;
       row.buyer = user;
       row.data_id = data_id;
       row.timestamp = current_time_point().sec_since_epoch();
@@ -153,9 +154,9 @@ void datatrader::buydata(
 
    action(
      permission_level{user, "active"_n},
-  	 TOKEN_CONTRACT, "transfer"_n,
-  	 std::make_tuple(user, d.provider, d.price),
-  	 std::string(DATA_REWARD_MEMO))
+  	 TOKEN_CONTRACT,
+  	 "transfer"_n,
+  	 std::make_tuple(user, d.provider, d.price, std::string(DATA_REWARD_MEMO))
    ).send();
 }
 
@@ -220,7 +221,7 @@ void datatrader::addcluster(
     
     uint64_t size = std::distance(_idfscluster.cbegin(), _idfscluster.cend());
     _idfscluster.emplace(_self, [&](auto& row) {
-      row.cluster_id = size;
+      row.cluster_id = size + 1;
       row.cluster_key = cluster_key;
       row.fee_ratio = 10000;
     });

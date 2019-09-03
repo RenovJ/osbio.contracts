@@ -43,7 +43,7 @@ class [[eosio::contract]] datatrader : public contract {
       [[eosio::action]] void adddatabegin(
         name provider,
         std::string datatype_name,
-        esset price,
+        asset price,
         std::vector<std::string> detail_fields,
         uint64_t period,
         std::string data_hash_original,
@@ -82,10 +82,10 @@ class [[eosio::contract]] datatrader : public contract {
         name idfs_account,
         std::string cluster_key
       );
-      [[eosio::action]] void claimireward(
+      /*[[eosio::action]] void claimireward(
         name idfs_account,
         uint64_t reward_id
-      );
+      );*/
       
   private:
       struct [[eosio::table]] data {
@@ -93,7 +93,7 @@ class [[eosio::contract]] datatrader : public contract {
         std::string datatype_name;
         name provider;
         uint64_t timestamp;
-        uint64_t price;
+        asset price;
         uint64_t status;
         std::vector<std::string> detail_fields;
         uint64_t period;
@@ -156,19 +156,14 @@ class [[eosio::contract]] datatrader : public contract {
         name idfs_account;
         asset reward_total;
         asset reward_claimed;
-      }
+      };
       
       struct [[eosio::table]] irewardclaim {
         uint64_t claim_id;
         uint64_t reward_id;
         asset quantity;
-        uint64 timestamp;
-      }
-
-      data_index::const_iterator get_data_by_id(uint64_t data_id);
-      idfscluster_index::const_iterator get_idfs_cluster_by_id(uint64_t cluster_id);
-      bool check_if_buy(name user, uint64_t data_id);
-      std::vector<fragment> match_idfs_cluster(std::vector<fragment> fragments);
+        uint64_t timestamp;
+      };
 
       typedef eosio::multi_index<"data"_n, data> data_index;
       typedef eosio::multi_index<"datatype"_n, datatype> datatype_index;
@@ -178,6 +173,11 @@ class [[eosio::contract]] datatrader : public contract {
       typedef eosio::multi_index<"idfscluster"_n, idfscluster> idfscluster_index;
       typedef eosio::multi_index<"idfsreward"_n, idfsreward> idfsreward_index;
       typedef eosio::multi_index<"irewardclaim"_n, irewardclaim> irewardclaim_index;
+
+      data_index::const_iterator get_data_by_id(uint64_t data_id);
+      idfscluster_index::const_iterator get_idfs_cluster_by_id(uint64_t cluster_id);
+      bool check_if_buy(name user, uint64_t data_id);
+      std::vector<fragment> match_idfs_cluster(std::vector<fragment> fragments);
 
       datatype_index     _datatype;
       data_index         _data;
