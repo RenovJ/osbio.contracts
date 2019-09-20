@@ -59,7 +59,6 @@ void datatrader::adddataend(
     
     //uint64_t total_fee = itData.size / MEGA_BYTE / 365 *
     
-    
     for (int i = 0; i < fragments.size(); i++) {
       for (auto f : (*itData).fragments) {
         if (f.fragment_no == fragments.at(i).fragment_no) {
@@ -73,12 +72,6 @@ void datatrader::adddataend(
           _idfscluster.modify(itCluster, _self, [&](auto& row) {
             row.usage += (*itData).fragments.at(i).size;
           });
-          
-          
-          
-          
-          
-          
         }
       }
     }
@@ -207,7 +200,7 @@ void datatrader::addidfs(
 
 void datatrader::addcluster(
     name idfs_account,
-    std::string cluster_key
+    std::string cluster_key_hash
 ) {
     require_auth(idfs_account);
     
@@ -215,14 +208,14 @@ void datatrader::addcluster(
     auto iterator = _idfscluster.begin();
     if (iterator != _idfscluster.end()) {
       do {
-        eosio_assert((*iterator).cluster_key != cluster_key, "The cluster key is already exist");
+        eosio_assert((*iterator).cluster_key_hash != cluster_key_hash, "The cluster key is already exist");
       } while (++iterator != _idfscluster.end());
     }
     
     uint64_t size = std::distance(_idfscluster.cbegin(), _idfscluster.cend());
     _idfscluster.emplace(_self, [&](auto& row) {
       row.cluster_id = size + 1;
-      row.cluster_key = cluster_key;
+      row.cluster_key_hash = cluster_key_hash;
       row.fee_ratio = 10000;
     });
 }

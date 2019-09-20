@@ -80,7 +80,7 @@ class [[eosio::contract]] datatrader : public contract {
       );
       [[eosio::action]] void addcluster(
         name idfs_account,
-        std::string cluster_key
+        std::string cluster_key_hash
       );
       /*[[eosio::action]] void claimireward(
         name idfs_account,
@@ -140,7 +140,7 @@ class [[eosio::contract]] datatrader : public contract {
       
       struct [[eosio::table]] idfscluster {
         uint64_t cluster_id;
-        std::string cluster_key;
+        std::string cluster_key_hash;
         uint64_t usage;
         uint64_t capacity;
         uint64_t fee_ratio;
