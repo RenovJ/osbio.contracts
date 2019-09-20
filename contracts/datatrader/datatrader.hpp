@@ -22,7 +22,7 @@ class [[eosio::contract]] datatrader : public contract {
       struct fragment {
         uint64_t fragment_no;
         uint64_t size;
-        eosio::public_key encrypt_key;
+        std::string encrypt_key;
         std::string hash_original;
         std::string hash_encrypted;
         uint64_t idfs_cluster_id;
@@ -64,7 +64,7 @@ class [[eosio::contract]] datatrader : public contract {
       [[eosio::action]] void buydata(
         name user,
         uint64_t data_id,
-        eosio::public_key buyer_key
+        std::string buyer_key
       );
       [[eosio::action]] void removedata(
         name user,
@@ -74,7 +74,7 @@ class [[eosio::contract]] datatrader : public contract {
         name idfs_account,
         uint64_t capacity,
         uint64_t cluster_id,
-        eosio::public_key idfs_public_key,
+        std::string idfs_public_key,
         std::string ipaddr,
         uint64_t port
       );
@@ -119,7 +119,7 @@ class [[eosio::contract]] datatrader : public contract {
         name buyer;
         uint64_t data_id;
         uint64_t timestamp;
-        eosio::public_key buyer_key;
+        std::string buyer_key;
 
         uint64_t primary_key() const { return buy_id; }	
       };
@@ -127,7 +127,7 @@ class [[eosio::contract]] datatrader : public contract {
       struct [[eosio::table]] idfs {
         uint64_t idfs_id;
         name account;
-        eosio::public_key idfs_public_key;
+        std::string idfs_public_key;
         uint64_t capacity;
         time_t since;
         uint64_t cluster_id;

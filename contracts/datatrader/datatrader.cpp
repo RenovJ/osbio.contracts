@@ -118,7 +118,7 @@ void datatrader::adddatatype(
 void datatrader::buydata(
     name user,
     uint64_t data_id,
-    eosio::public_key buyer_key
+    std::string buyer_key
 ) {
    require_auth(user);
    auto it_data = get_data_by_id(data_id);
@@ -172,7 +172,7 @@ void datatrader::addidfs(
     name idfs_account,
     uint64_t capacity,
     uint64_t cluster_id,
-    eosio::public_key idfs_public_key,
+    std::string idfs_public_key,
     std::string ipaddr,
     uint64_t port
 ) {
