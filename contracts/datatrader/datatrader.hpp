@@ -15,7 +15,7 @@ class [[eosio::contract]] datatrader : public contract {
       const uint64_t DATA_STATUS_OUTDATED = 0x03;
       const std::string TOKEN_SYMBOL = "OSB";
       const uint64_t TOKEN_DECIMAL = 0;
-      const name TOKEN_CONTRACT = "osb.token"_n;
+      const name TOKEN_CONTRACT = "osbio.token"_n;
       const std::string DATA_REWARD_MEMO = "Data reward";
       const uint64_t MEGA_BYTE = 1024 * 1024;
       
