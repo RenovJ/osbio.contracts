@@ -17,7 +17,10 @@ class [[eosio::contract]] datatrader : public contract {
       const uint64_t TOKEN_DECIMAL = 0;
       const name TOKEN_CONTRACT = "osbio.token"_n;
       const std::string DATA_REWARD_MEMO = "Data reward";
+      const std::string KEEPER_REWARD_MEMO = "Keeper reward";
       const uint64_t MEGA_BYTE = 1024 * 1024;
+      const uint64_t MAX_KEEPER_NUMBER_OF_CLUSTER = 5;
+      const uint64_t DAY_SECONDS = 60 * 60 * 24;
       
       struct fragment {
         uint64_t fragment_no;
@@ -36,8 +39,8 @@ class [[eosio::contract]] datatrader : public contract {
         _buyhistory(receiver, code.value),
         _idfs(receiver, code.value),
         _idfscluster(receiver, code.value),
-        _idfsreward(receiver, code.value),
-        _irewardclaim(receiver, code.value) {}
+        _keeperreward(receiver, code.value),
+        _keeperclaim(receiver, code.value) {}
 
       [[eosio::action]] void hi( name user );
       [[eosio::action]] void adddatabegin(
@@ -82,10 +85,10 @@ class [[eosio::contract]] datatrader : public contract {
         name idfs_account,
         std::string cluster_key_hash
       );
-      /*[[eosio::action]] void claimireward(
+      [[eosio::action]] void claimkreward(
         name idfs_account,
         uint64_t reward_id
-      );*/
+      );
       
   private:
       struct [[eosio::table]] data {
@@ -99,6 +102,7 @@ class [[eosio::contract]] datatrader : public contract {
         uint64_t period;
         std::string data_hash_original;
         uint64_t size;
+        uint64_t total_storage_fee;
         std::vector<fragment> fragments;
         
         uint64_t primary_key() const { return data_id; } 
@@ -144,11 +148,12 @@ class [[eosio::contract]] datatrader : public contract {
         uint64_t usage;
         uint64_t capacity;
         uint64_t fee_ratio;
+        std::vector<uint64_t> idfs_list;
         
         uint64_t primary_key() const { return cluster_id; }
       };
       
-      struct [[eosio::table]] idfsreward {
+      struct [[eosio::table]] keeperreward {
         uint64_t reward_id;
         uint64_t data_id;
         uint64_t fragment_no;
@@ -158,7 +163,7 @@ class [[eosio::contract]] datatrader : public contract {
         asset reward_claimed;
       };
       
-      struct [[eosio::table]] irewardclaim {
+      struct [[eosio::table]] keeperclaim {
         uint64_t claim_id;
         uint64_t reward_id;
         asset quantity;
@@ -171,20 +176,22 @@ class [[eosio::contract]] datatrader : public contract {
       typedef eosio::multi_index<"idfs"_n, idfs,
       indexed_by<"getcluster"_n, const_mem_fun<idfs, uint64_t, &idfs::secondary_key>>> idfs_index;
       typedef eosio::multi_index<"idfscluster"_n, idfscluster> idfscluster_index;
-      typedef eosio::multi_index<"idfsreward"_n, idfsreward> idfsreward_index;
-      typedef eosio::multi_index<"irewardclaim"_n, irewardclaim> irewardclaim_index;
+      typedef eosio::multi_index<"keeperreward"_n, keeperreward> keeperreward_index;
+      typedef eosio::multi_index<"keeperclaim"_n, keeperclaim> keeperclaim_index;
 
       data_index::const_iterator get_data_by_id(uint64_t data_id);
       idfscluster_index::const_iterator get_idfs_cluster_by_id(uint64_t cluster_id);
+      idfs_index::const_iterator get_idfs_by_id(uint64_t keeper_id);
+      keeperreward_index::const_iterator get_reward_by_id(uint64_t reward_id);
       bool check_if_buy(name user, uint64_t data_id);
       std::vector<fragment> match_idfs_cluster(std::vector<fragment> fragments);
 
-      datatype_index     _datatype;
-      data_index         _data;
-      buyhistory_index   _buyhistory;
-      idfs_index         _idfs;
-      idfscluster_index  _idfscluster;
-      idfsreward_index   _idfsreward;
-      irewardclaim_index _irewardclaim;
+      datatype_index      _datatype;
+      data_index          _data;
+      buyhistory_index    _buyhistory;
+      idfs_index          _idfs;
+      idfscluster_index   _idfscluster;
+      keeperreward_index  _keeperreward;
+      keeperclaim_index   _keeperclaim;
 };
 

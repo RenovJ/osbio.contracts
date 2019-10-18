@@ -32,6 +32,11 @@ void datatrader::adddatabegin(
     // Matching idfs cluster for each data fragment
     fragments = match_idfs_cluster(fragments);
     
+    // Calculate storage fee day
+    uint64_t total_storage_fee = size * period * 5 / MEGA_BYTE;
+    if (total_storage_fee < MAX_KEEPER_NUMBER_OF_CLUSTER * fragments.size())
+      total_storage_fee = MAX_KEEPER_NUMBER_OF_CLUSTER * fragments.size();
+    
     // emplace data
     uint64_t dataListLength = std::distance(_data.cbegin(), _data.cend());
     _data.emplace(_self, [&](auto& row) {
@@ -45,8 +50,9 @@ void datatrader::adddatabegin(
         row.period = period;
         row.data_hash_original = data_hash_original;
         row.size = size;
-        row.fragments = fragments; 
-        });
+        row.fragments = fragments;
+        row.total_storage_fee = total_storage_feed;
+    });
 }
 
 void datatrader::adddataend(
@@ -56,8 +62,6 @@ void datatrader::adddataend(
 ) {
     require_auth(provider);
     auto itData = get_data_by_id(data_id);
-    
-    //uint64_t total_fee = itData.size / MEGA_BYTE / 365 *
     
     for (int i = 0; i < fragments.size(); i++) {
       for (auto f : (*itData).fragments) {
@@ -72,6 +76,21 @@ void datatrader::adddataend(
           _idfscluster.modify(itCluster, _self, [&](auto& row) {
             row.usage += (*itData).fragments.at(i).size;
           });
+          
+          for (auto keeper_id : (*itCluster).idfs_list) {
+            // Create keeper rewards
+            auto itKeeper = get_idfs_by_id(keeper_id);
+            uint64_t keeperrewardLength = std::distance(_keeperreward.cbegin(), _keeperreward.cend());
+            _keeperreward.emplace(_self, [&](auto& row) {
+                row.reward_id = keeperrewardLength + 1;
+                row.data_id = data_id;
+                row.fragment_no = f.fragment_no;
+                row.cluster_id = (*itData).fragments.at(i).idfs_cluster_id;
+                row.idfs_account = (*itKeeper).idfs_account;
+                row.reward_total = (*itData).total_storage_fee / 5 / (*itData).fragments.size();
+                row.reward_claimed = 0;
+            });
+          }
         }
       }
     }
@@ -80,15 +99,15 @@ void datatrader::adddataend(
       row.status = DATA_STATUS_ON_SALE;
       row.fragments = fragments;
     });
-
-   // sending OSB to IDFSs as a reward for keeping data
-   /*    
-   action(
+    
+    // Transfer total storage fee
+    int amount = (*itData).total_storage_fee;
+    eosio::asset token(tk, eosio::symbol("OSB",4));
+    action(
      permission_level{provider, "active"_n},
      TOKEN_CONTRACT, "transfer"_n,
-     std::make_tuple(user, d.provider, d.price, std::string(DATA_REWARD_MEMO))
-   ).send();
-   */
+     std::make_tuple(provider, _self, token, std::string("Transfer total storage fee"))
+    ).send();
 }
 
 void datatrader::adddatatype(
@@ -212,11 +231,47 @@ void datatrader::addcluster(
       } while (++iterator != _idfscluster.end());
     }
     
-    uint64_t size = std::distance(_idfscluster.cbegin(), _idfscluster.cend());
+    uint64_t cluster_length = std::distance(_idfscluster.cbegin(), _idfscluster.cend());
     _idfscluster.emplace(_self, [&](auto& row) {
-      row.cluster_id = size + 1;
+      row.cluster_id = cluster_length + 1;
       row.cluster_key_hash = cluster_key_hash;
       row.fee_ratio = 10000;
+    });
+}
+
+void datatrader::claimkreward(
+    name idfs_account,
+    uint64_t reward_id
+) {
+    require_auth(idfs_account);
+    
+    // check available reward to claim
+    auto itReward = get_reward_by_id(reward_id);
+    auto itData = get_data_by_id( (*itReward).data_id );
+    eosio_assert((*itData).timestamp + (DAY_SECONDS * (*itData).period)
+        < current_time_point().sec_since_epoch(),
+        "Keeper rewards is available to claim after the end of keeping period");
+    eosio_assert((*itReward).reward_total > (*itReward)reward_claimed,
+        "The reward has already been claimed all");
+        
+    uint64_t claim_amount = (*itReward).reward_total - (*itReward)reward_claimed;
+      
+    // sending OSB to IDFSs as a reward for keeping data
+    int amount = (*itData).total_storage_fee;
+    eosio::asset token(amount, eosio::symbol("OSB",4));
+    action(
+       permission_level{provider, "active"_n},
+       TOKEN_CONTRACT, "transfer"_n,
+       std::make_tuple(_self, idfs_account, token, std::string(KEEPER_REWARD_MEMO))
+    ).send();
+
+    // create claim history
+    uint64_t claim_size = std::distance(_keeperclaim.cbegin(), _keeperclaim.cend());
+    _keeperclaim.emplace(_self, [&](auto& row) {
+      row.claim_id = claim_size + 1;
+      row.reward_id = reward_id;
+      row.quantity = claim_amount;
+      row.timestamp = current_time_point().sec_since_epoch();
     });
 }
 
@@ -229,6 +284,18 @@ datatrader::data_index::const_iterator datatrader::get_data_by_id(uint64_t data_
 datatrader::idfscluster_index::const_iterator datatrader::get_idfs_cluster_by_id(uint64_t cluster_id) {
     auto iterator = _idfscluster.find(cluster_id);
     eosio_assert(iterator != _idfscluster.end(), "The idfs cluster id is invalid");
+    return iterator;
+}
+
+datatrader::idfs_index::const_iterator datatrader::get_idfs_by_id(uint64_t keeper_id) {
+    auto iterator = _idfs.find(keeper_id);
+    eosio_assert(iterator != _idfs.end(), "The idfs id is invalid");
+    return iterator;
+}
+
+datatrader::keeperreward_index::const_iterator datatrader::get_reward_by_id(uint64_t reward_id) {
+    auto iterator = _keeperreward.find(reward_id);
+    eosio_assert(iterator != _keeperreward.end(), "The reward id is invalid");
     return iterator;
 }
 
