@@ -51,7 +51,7 @@ void datatrader::adddatabegin(
         row.data_hash_original = data_hash_original;
         row.size = size;
         row.fragments = fragments;
-        row.total_storage_fee = total_storage_feed;
+        row.total_storage_fee = total_storage_fee;
     });
 }
 
@@ -77,6 +77,10 @@ void datatrader::adddataend(
             row.usage += (*itData).fragments.at(i).size;
           });
           
+          uint64_t amount_reward_total = (*itData).total_storage_fee / 5 / (*itData).fragments.size();
+          uint64_t amount_reward_claimed = 0;
+          eosio::asset reward_total(amount_reward_total, eosio::symbol("OSB",4));
+          eosio::asset reward_claimed(amount_reward_claimed, eosio::symbol("OSB",4));
           for (auto keeper_id : (*itCluster).idfs_list) {
             // Create keeper rewards
             auto itKeeper = get_idfs_by_id(keeper_id);
@@ -86,9 +90,9 @@ void datatrader::adddataend(
                 row.data_id = data_id;
                 row.fragment_no = f.fragment_no;
                 row.cluster_id = (*itData).fragments.at(i).idfs_cluster_id;
-                row.idfs_account = (*itKeeper).idfs_account;
-                row.reward_total = (*itData).total_storage_fee / 5 / (*itData).fragments.size();
-                row.reward_claimed = 0;
+                row.idfs_account = (*itKeeper).account;
+                row.reward_total = reward_total;
+                row.reward_claimed = reward_claimed;
             });
           }
         }
@@ -102,7 +106,7 @@ void datatrader::adddataend(
     
     // Transfer total storage fee
     int amount = (*itData).total_storage_fee;
-    eosio::asset token(tk, eosio::symbol("OSB",4));
+    eosio::asset token(amount, eosio::symbol("OSB",4));
     action(
      permission_level{provider, "active"_n},
      TOKEN_CONTRACT, "transfer"_n,
@@ -251,26 +255,26 @@ void datatrader::claimkreward(
     eosio_assert((*itData).timestamp + (DAY_SECONDS * (*itData).period)
         < current_time_point().sec_since_epoch(),
         "Keeper rewards is available to claim after the end of keeping period");
-    eosio_assert((*itReward).reward_total > (*itReward)reward_claimed,
+    eosio_assert((*itReward).reward_total > (*itReward).reward_claimed,
         "The reward has already been claimed all");
         
-    uint64_t claim_amount = (*itReward).reward_total - (*itReward)reward_claimed;
+    uint64_t claim_amount = (*itReward).reward_total.amount - (*itReward).reward_claimed.amount;
+    eosio::asset claim_token(claim_amount, eosio::symbol("OSB",4));
       
     // sending OSB to IDFSs as a reward for keeping data
-    int amount = (*itData).total_storage_fee;
-    eosio::asset token(amount, eosio::symbol("OSB",4));
     action(
-       permission_level{provider, "active"_n},
+       permission_level{_self, "active"_n},
        TOKEN_CONTRACT, "transfer"_n,
-       std::make_tuple(_self, idfs_account, token, std::string(KEEPER_REWARD_MEMO))
+       std::make_tuple(_self, idfs_account, claim_token, std::string(KEEPER_REWARD_MEMO))
     ).send();
 
     // create claim history
+    eosio::asset token(claim_amount, eosio::symbol("OSB",4));
     uint64_t claim_size = std::distance(_keeperclaim.cbegin(), _keeperclaim.cend());
     _keeperclaim.emplace(_self, [&](auto& row) {
       row.claim_id = claim_size + 1;
       row.reward_id = reward_id;
-      row.quantity = claim_amount;
+      row.quantity = claim_token;
       row.timestamp = current_time_point().sec_since_epoch();
     });
 }

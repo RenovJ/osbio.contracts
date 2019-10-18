@@ -161,6 +161,8 @@ class [[eosio::contract]] datatrader : public contract {
         name idfs_account;
         asset reward_total;
         asset reward_claimed;
+        
+        uint64_t primary_key() const { return reward_id; }
       };
       
       struct [[eosio::table]] keeperclaim {
@@ -168,6 +170,8 @@ class [[eosio::contract]] datatrader : public contract {
         uint64_t reward_id;
         asset quantity;
         uint64_t timestamp;
+        
+        uint64_t primary_key() const { return claim_id; }
       };
 
       typedef eosio::multi_index<"data"_n, data> data_index;
