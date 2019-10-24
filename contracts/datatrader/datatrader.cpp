@@ -33,7 +33,7 @@ void datatrader::adddatabegin(
     fragments = match_idfs_cluster(fragments);
     
     // Calculate storage fee day
-    uint64_t total_storage_fee = size * period * 5 / MEGA_BYTE;
+    uint64_t total_storage_fee = size * period * MAX_KEEPER_NUMBER_OF_CLUSTER / MEGA_BYTE;
     if (total_storage_fee < MAX_KEEPER_NUMBER_OF_CLUSTER * fragments.size())
       total_storage_fee = MAX_KEEPER_NUMBER_OF_CLUSTER * fragments.size();
     
@@ -77,7 +77,7 @@ void datatrader::adddataend(
             row.usage += (*itData).fragments.at(i).size;
           });
           
-          uint64_t amount_reward_total = (*itData).total_storage_fee / 5 / (*itData).fragments.size();
+          uint64_t amount_reward_total = (*itData).total_storage_fee / MAX_KEEPER_NUMBER_OF_CLUSTER / (*itData).fragments.size();
           uint64_t amount_reward_claimed = 0;
           eosio::asset reward_total(amount_reward_total, eosio::symbol("OSB",4));
           eosio::asset reward_claimed(amount_reward_claimed, eosio::symbol("OSB",4));
@@ -201,16 +201,9 @@ void datatrader::addidfs(
 ) {
     require_auth(idfs_account);
     
-    auto itCluster = get_idfs_cluster_by_id(cluster_id);
-    if ((*itCluster).capacity == 0 || capacity < (*itCluster).capacity) {
-      _idfscluster.modify(itCluster, _self, [&](auto& row) {
-        row.capacity = capacity;
-      });
-    }
-    
     uint64_t size = std::distance(_idfs.cbegin(), _idfs.cend());
     _idfs.emplace(_self, [&](auto& row) {
-      row.idfs_id = size;
+      row.idfs_id = size + 1;
       row.account = idfs_account;
       row.idfs_public_key = idfs_public_key;
       row.capacity = capacity;
@@ -219,6 +212,18 @@ void datatrader::addidfs(
       row.ipaddr = ipaddr;
       row.port = port;
     });
+    
+    auto itCluster = get_idfs_cluster_by_id(cluster_id);
+    eosio_assert((*itCluster).idfs_list.size() < MAX_KEEPER_NUMBER_OF_CLUSTER,
+        "The cluster is full of maximum number of keepers in a cluster");
+    std::vector<uint64_t> new_idfs_list = (*itCluster).idfs_list;
+    new_idfs_list.push_back(size + 1);
+    if ((*itCluster).capacity == 0 || capacity < (*itCluster).capacity) {
+      _idfscluster.modify(itCluster, _self, [&](auto& row) {
+        row.capacity = capacity;
+        row.idfs_list = new_idfs_list;
+      });
+    }
 }
 
 void datatrader::addcluster(
