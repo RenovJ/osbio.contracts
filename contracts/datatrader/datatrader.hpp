@@ -90,6 +90,7 @@ class [[eosio::contract]] datatrader : public contract {
         uint64_t reward_id
       );
       
+      
   private:
       struct [[eosio::table]] data {
         uint64_t data_id;
@@ -149,6 +150,7 @@ class [[eosio::contract]] datatrader : public contract {
         uint64_t capacity;
         uint64_t fee_ratio;
         std::vector<uint64_t> idfs_list;
+        uint64_t status;
         
         uint64_t primary_key() const { return cluster_id; }
       };

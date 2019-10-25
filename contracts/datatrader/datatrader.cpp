@@ -5,6 +5,8 @@ using namespace eosio::internal_use_do_not_use;
 
 void datatrader::hi( name user ) {
     print("Hello, ", user);
+    
+    
 }
 
 void datatrader::adddatabegin(
@@ -216,7 +218,8 @@ void datatrader::addidfs(
     auto itCluster = get_idfs_cluster_by_id(cluster_id);
     eosio_assert((*itCluster).idfs_list.size() < MAX_KEEPER_NUMBER_OF_CLUSTER,
         "The cluster is full of maximum number of keepers in a cluster");
-    std::vector<uint64_t> new_idfs_list = (*itCluster).idfs_list;
+    std::vector<uint64_t> new_idfs_list;
+    new_idfs_list.assign((*itCluster).idfs_list.begin(), (*itCluster).idfs_list.end());
     new_idfs_list.push_back(size + 1);
     if ((*itCluster).capacity == 0 || capacity < (*itCluster).capacity) {
       _idfscluster.modify(itCluster, _self, [&](auto& row) {
@@ -247,6 +250,7 @@ void datatrader::addcluster(
       row.fee_ratio = 10000;
     });
 }
+
 
 void datatrader::claimkreward(
     name idfs_account,
@@ -339,7 +343,8 @@ std::vector<datatrader::fragment> datatrader::match_idfs_cluster(std::vector<fra
         }
         continue;
       }
-      if (min_usage_cluster->usage >= (*it_cluster).usage) {
+      if (min_usage_cluster->usage >= (*it_cluster).usage &&
+          (*it_cluster).capacity - (*it_cluster).usage > fragments.at(i).size) {
         // check matched already for previous fragment
         uint64_t j;
         for (j = 0; j < i; j++) {
@@ -352,8 +357,6 @@ std::vector<datatrader::fragment> datatrader::match_idfs_cluster(std::vector<fra
         }
       }
     } while (++it_cluster != _idfscluster.end());
-    eosio_assert((*min_usage_cluster).capacity - (*min_usage_cluster).usage >= fragments.at(i).size,
-      "There is no idfs cluster to match");
     fragments.at(i).idfs_cluster_id = (*min_usage_cluster).cluster_id;
   }
   
