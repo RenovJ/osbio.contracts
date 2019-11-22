@@ -4,7 +4,7 @@ using namespace eosio;
 using namespace eosio::internal_use_do_not_use;
 
 void datatrader::hi( name user ) {
-    print("Hello, ", user);
+    // print("Hello, ", user);
     
     
 }
@@ -35,7 +35,7 @@ void datatrader::adddatabegin(
     fragments = match_idfs_cluster(fragments);
     
     // Calculate storage fee day
-    uint64_t total_storage_fee = size * period * MAX_KEEPER_NUMBER_OF_CLUSTER / MEGA_BYTE;
+    uint64_t total_storage_fee = (uint64_t)(size * period * MAX_KEEPER_NUMBER_OF_CLUSTER / MEGA_BYTE);
     if (total_storage_fee < MAX_KEEPER_NUMBER_OF_CLUSTER * fragments.size())
       total_storage_fee = MAX_KEEPER_NUMBER_OF_CLUSTER * fragments.size();
     
@@ -79,7 +79,7 @@ void datatrader::adddataend(
             row.usage += (*itData).fragments.at(i).size;
           });
           
-          uint64_t amount_reward_total = (*itData).total_storage_fee / MAX_KEEPER_NUMBER_OF_CLUSTER / (*itData).fragments.size();
+          uint64_t amount_reward_total = (uint64_t)((*itData).total_storage_fee / MAX_KEEPER_NUMBER_OF_CLUSTER / (*itData).fragments.size());
           uint64_t amount_reward_claimed = 0;
           eosio::asset reward_total(amount_reward_total, eosio::symbol("OSB",4));
           eosio::asset reward_claimed(amount_reward_claimed, eosio::symbol("OSB",4));
@@ -203,9 +203,9 @@ void datatrader::addidfs(
 ) {
     require_auth(idfs_account);
     
-    uint64_t size = std::distance(_idfs.cbegin(), _idfs.cend());
+    uint64_t idfs_id = std::distance(_idfs.cbegin(), _idfs.cend()) + 1;
     _idfs.emplace(_self, [&](auto& row) {
-      row.idfs_id = size + 1;
+      row.idfs_id = idfs_id;
       row.account = idfs_account;
       row.idfs_public_key = idfs_public_key;
       row.capacity = capacity;
@@ -218,13 +218,14 @@ void datatrader::addidfs(
     auto itCluster = get_idfs_cluster_by_id(cluster_id);
     eosio_assert((*itCluster).idfs_list.size() < MAX_KEEPER_NUMBER_OF_CLUSTER,
         "The cluster is full of maximum number of keepers in a cluster");
-    std::vector<uint64_t> new_idfs_list;
-    new_idfs_list.assign((*itCluster).idfs_list.begin(), (*itCluster).idfs_list.end());
-    new_idfs_list.push_back(size + 1);
+    //std::vector<uint64_t> new_idfs_list;
+    //new_idfs_list.assign((*itCluster).idfs_list.begin(), (*itCluster).idfs_list.end());
+    //new_idfs_list.push_back(idfs_id);
     if ((*itCluster).capacity == 0 || capacity < (*itCluster).capacity) {
       _idfscluster.modify(itCluster, _self, [&](auto& row) {
         row.capacity = capacity;
-        row.idfs_list = new_idfs_list;
+        //row.idfs_list = new_idfs_list;
+        row.idfs_list.push_back(idfs_id);
       });
     }
 }
@@ -344,7 +345,7 @@ std::vector<datatrader::fragment> datatrader::match_idfs_cluster(std::vector<fra
         continue;
       }
       if (min_usage_cluster->usage >= (*it_cluster).usage &&
-          (*it_cluster).capacity - (*it_cluster).usage > fragments.at(i).size) {
+          (*it_cluster).capacity - (*it_cluster).usage >= fragments.at(i).size) {
         // check matched already for previous fragment
         uint64_t j;
         for (j = 0; j < i; j++) {
