@@ -107,6 +107,7 @@ class [[eosio::contract]] datatrader : public contract {
         std::vector<fragment> fragments;
         
         uint64_t primary_key() const { return data_id; } 
+        std::string secondary_key() const { return datatype_name; }
       };
       
       struct [[eosio::table]] datatype {
@@ -127,6 +128,7 @@ class [[eosio::contract]] datatrader : public contract {
         std::string buyer_key;
 
         uint64_t primary_key() const { return buy_id; }	
+        name secondary_key() const { return buyer; }
       };
       
       struct [[eosio::table]] idfs {
@@ -175,11 +177,13 @@ class [[eosio::contract]] datatrader : public contract {
         uint64_t primary_key() const { return claim_id; }
       };
 
-      typedef eosio::multi_index<"data"_n, data> data_index;
+      typedef eosio::multi_index<"idfs"_n, data,
+      indexed_by<"bydatatype"_n, const_mem_fun<data, std::string, &data::secondary_key>>> data_index;
       typedef eosio::multi_index<"datatype"_n, datatype> datatype_index;
-      typedef eosio::multi_index<"buyhistory"_n, buyhistory> buyhistory_index;
+      typedef eosio::multi_index<"buyhistory"_n, buyhistory,
+      indexed_by<"bybuyer"_n, const_mem_fun<buyhistory, name, &data::secondary_key>>> buyhistory_index;
       typedef eosio::multi_index<"idfs"_n, idfs,
-      indexed_by<"getcluster"_n, const_mem_fun<idfs, uint64_t, &idfs::secondary_key>>> idfs_index;
+      indexed_by<"bycluster"_n, const_mem_fun<idfs, uint64_t, &idfs::secondary_key>>> idfs_index;
       typedef eosio::multi_index<"idfscluster"_n, idfscluster> idfscluster_index;
       typedef eosio::multi_index<"keeperreward"_n, keeperreward> keeperreward_index;
       typedef eosio::multi_index<"keeperclaim"_n, keeperclaim> keeperclaim_index;
