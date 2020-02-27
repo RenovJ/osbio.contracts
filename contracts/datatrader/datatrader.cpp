@@ -170,12 +170,14 @@ void datatrader::buydata(
       row.buyer_key = buyer_key;
    });
 
-   action(
-     permission_level{user, "active"_n},
-  	 TOKEN_CONTRACT,
-  	 "transfer"_n,
-  	 std::make_tuple(user, d.provider, d.price, std::string(DATA_REWARD_MEMO))
-   ).send();
+   if (d.price.amount > 0) {
+     action(
+       permission_level{user, "active"_n},
+       TOKEN_CONTRACT,
+       "transfer"_n,
+       std::make_tuple(user, d.provider, d.price, std::string(DATA_REWARD_MEMO))
+     ).send();
+   }
 }
 
 void datatrader::removedata(
