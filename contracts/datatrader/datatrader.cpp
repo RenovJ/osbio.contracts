@@ -23,11 +23,14 @@ void datatrader::adddatabegin(
     require_auth(provider);
     
     // check datatype_name
+    uint64_t datatype_id = 0;
     auto iterator = _datatype.begin();
     eosio_assert(_datatype.begin() != _datatype.end(), "There is no data type");
     do {
-      if ((*iterator).datatype_name == datatype_name)
+      if ((*iterator).datatype_name == datatype_name) {
+        datatype_id = (*iterator).datatype_id;
         break;
+      }
     } while (++iterator != _datatype.end());
     eosio_assert(iterator != _datatype.end(), "The datatype is invalid");
     
@@ -43,6 +46,7 @@ void datatrader::adddatabegin(
     uint64_t dataListLength = std::distance(_data.cbegin(), _data.cend());
     _data.emplace(_self, [&](auto& row) {
         row.data_id = dataListLength + 1;
+        row.datatype_id = datatype_id;
         row.datatype_name = datatype_name;
         row.provider = provider;
         row.timestamp = current_time_point().sec_since_epoch();
