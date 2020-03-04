@@ -180,7 +180,7 @@ buydata( name user,			//데이터 구매자 계정명
 데이터 삭제
 
 ```
-removedata(name user,		    //데이터 삭제하는 자의 계정명
+removedata(name user,		//데이터 삭제하는 자의 계정명
         uint64_t data_id	//삭제하고자 하는 데이터 id
 )
 ```
