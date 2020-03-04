@@ -123,14 +123,14 @@ Settlement history of data keeper's reward
 데이터 등록 신청
 
 ```
-adddatabegin(name provider,			//데이터 제공자 계정명
+adddatabegin(name provider,			 조 제공자 계정명
     std::string datatypename,			//데이터 타입명
     asset price,				//데이터 구매 가격 (단위: 0.0001 OSB)
     vector<std::string> detail_fields,		//데이터 추가 필드 값
     uint64_t period,				//데이터 보관 기간 (단위: 일)
     std::string data_hash_original,		//원본 데이터 해시 값 (해싱 알고리즘: SHA256)
     uint64_t size,				//원본 데이터 사이즈 (단위: byte)
-    vector<fragment> fragments,		    //데이터 조각 (size, hash, idfs_cluster_id 정의)
+    vector<fragment> fragments,		        //데이터 조각 (size, hash, idfs_cluster_id 정의)
 )
 ```
 * 데이터 등록 비용은 1일 기준 1MB 단위당 0.001 OSB 로 계산됨
@@ -153,7 +153,7 @@ adddataend(name provider,		//데이터 제공자 계정명
 데이터 타입 추가
 
 ```
-adddatatype( name user,			    //데이터 타입 정의자 계정명
+adddatatype( name user,			        //데이터 타입 정의자 계정명
         std::string datatype_name,		//데이터 타입명
         uint64_t detail_fields_num,		//해당 데이터 타입이 사용할 추가 필드 수
         std::vector<std::string> detail_fields	//데이터 추가 메타데이터 필드명
@@ -180,8 +180,8 @@ buydata( name user,			//데이터 구매자 계정명
 데이터 삭제
 
 ```
-removedata(name user,		       //데이터 삭제하는 자의 계정명
-        uint64_t data_id		//삭제하고자 하는 데이터 id
+removedata(name user,		    //데이터 삭제하는 자의 계정명
+        uint64_t data_id	//삭제하고자 하는 데이터 id
 )
 ```
 
@@ -209,7 +209,7 @@ addidfs(name idfs_account,	//IDFS 노드 제공자의 계정명
 보관소 등록
 
 ```
-addcluster(name idfs_account,	    //IDFS 노드 제공자(보관소 등록자)의 계정명
+addcluster(name idfs_account,	        //IDFS 노드 제공자(보관소 등록자)의 계정명
         std::string cluster_key_hash	//보관소의 IPFS cluster secret key의 hash값
 )
 ```
